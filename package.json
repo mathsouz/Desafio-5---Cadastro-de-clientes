@@ -1,0 +1,28 @@
+{
+  "name": "cadastro-clientes-airtable",
+  "version": "1.0.0",
+  "description": "App simples de cadastro de clientes com frontend puro e proxy Node para Airtable",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js"
+  },
+  "keywords": [
+    "frontend",
+    "airtable",
+    "crud",
+    "express",
+    "javascript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2"
+  }
+}
+
+
