@@ -30,6 +30,19 @@ const els = {
 
 // Base da API (configurável via config.json para funcionar no GitHub Pages)
 let API_BASE_URL = '/api';
+let USE_DIRECT_AIRTABLE = false;
+let AIRTABLE_BASE_URL = '';
+let AIRTABLE_HEADERS = {};
+
+// Se existir PUBLIC_AIRTABLE no window com credenciais, usamos modo direto
+if (window.PUBLIC_AIRTABLE && window.PUBLIC_AIRTABLE.API_KEY && window.PUBLIC_AIRTABLE.BASE_ID && window.PUBLIC_AIRTABLE.TABLE_NAME) {
+  USE_DIRECT_AIRTABLE = true;
+  AIRTABLE_BASE_URL = `https://api.airtable.com/v0/${window.PUBLIC_AIRTABLE.BASE_ID}/${encodeURIComponent(window.PUBLIC_AIRTABLE.TABLE_NAME)}`;
+  AIRTABLE_HEADERS = {
+    Authorization: `Bearer ${window.PUBLIC_AIRTABLE.API_KEY}`,
+    'Content-Type': 'application/json',
+  };
+}
 
 // Controla visibilidade do estado de carregamento
 function setLoading(isLoading) {
@@ -139,7 +152,19 @@ async function fetchClients({ search = '', pageSize = 10, offset = null } = {}) 
     if (pageSize) params.set('pageSize', pageSize);
     if (offset) params.set('offset', offset);
 
-    const res = await fetch(`${API_BASE_URL}/clients?${params.toString()}`);
+    let res;
+    if (USE_DIRECT_AIRTABLE) {
+      // Converter "search" em filterByFormula quando em modo direto
+      if (search) {
+        const formula = `OR(FIND(LOWER(\"${search}\"), LOWER({nome}))>0, FIND(LOWER(\"${search}\"), LOWER({email}))>0, FIND(LOWER(\"${search}\"), LOWER({telefone}))>0)`;
+        params.set('filterByFormula', formula);
+        params.delete('search');
+      }
+      // pageSize/offset são aceitos nativamente pelo Airtable
+      res = await fetch(`${AIRTABLE_BASE_URL}?${params.toString()}`, { headers: AIRTABLE_HEADERS });
+    } else {
+      res = await fetch(`${API_BASE_URL}/clients?${params.toString()}`);
+    }
     if (!res.ok) throw new Error('Erro ao carregar clientes.');
     const data = await res.json();
     state.records = data.records || [];
@@ -163,6 +188,24 @@ async function createClient({ nome, email, telefone }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome, email, telefone }),
     });
+    if (USE_DIRECT_AIRTABLE) {
+      // Em modo direto, precisamos enviar no formato records[]
+      const payload = { records: [{ fields: { nome, email, telefone: telefone || '' } }] };
+      const directRes = await fetch(AIRTABLE_BASE_URL, {
+        method: 'POST',
+        headers: AIRTABLE_HEADERS,
+        body: JSON.stringify(payload),
+      });
+      if (!directRes.ok) {
+        const err = await directRes.json().catch(() => ({}));
+        throw new Error(err?.error?.message || 'Erro ao criar cliente.');
+      }
+      els.formStatus.textContent = 'Criado com sucesso!';
+      els.formStatus.className = 'status success';
+      els.form.reset();
+      await fetchClients({ search: state.search, pageSize: state.pageSize });
+      return;
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Erro ao criar cliente.');
@@ -181,8 +224,13 @@ async function createClient({ nome, email, telefone }) {
 async function handleDelete(id) {
   if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
   try {
-    const res = await fetch(`${API_BASE_URL}/clients/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Erro ao excluir.');
+    if (USE_DIRECT_AIRTABLE) {
+      const res = await fetch(`${AIRTABLE_BASE_URL}/${id}`, { method: 'DELETE', headers: AIRTABLE_HEADERS });
+      if (!res.ok) throw new Error('Erro ao excluir.');
+    } else {
+      const res = await fetch(`${API_BASE_URL}/clients/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erro ao excluir.');
+    }
     await fetchClients({ search: state.search, pageSize: state.pageSize, offset: state.prevOffsets.at(-1) || null });
   } catch (err) {
     alert(err.message || 'Falha ao excluir cliente');
@@ -192,12 +240,22 @@ async function handleDelete(id) {
 // Atualiza um cliente (edição inline)
 async function handleUpdate(id, fields) {
   try {
-    const res = await fetch(`${API_BASE_URL}/clients/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(fields),
-    });
-    if (!res.ok) throw new Error('Erro ao atualizar.');
+    if (USE_DIRECT_AIRTABLE) {
+      const payload = { records: [{ id, fields }] };
+      const res = await fetch(AIRTABLE_BASE_URL, {
+        method: 'PATCH',
+        headers: AIRTABLE_HEADERS,
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Erro ao atualizar.');
+    } else {
+      const res = await fetch(`${API_BASE_URL}/clients/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) throw new Error('Erro ao atualizar.');
+    }
     await fetchClients({ search: state.search, pageSize: state.pageSize, offset: state.prevOffsets.at(-1) || null });
     return true;
   } catch (err) {

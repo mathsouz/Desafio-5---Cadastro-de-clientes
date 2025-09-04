@@ -50,6 +50,20 @@ Exemplo de opções de proxy:
 
 > Importante: nunca exponha o token do Airtable no `config.json` ou no frontend. O `config.json` contém apenas a URL pública do proxy.
 
+### Alternativa simples (não segura): Modo direto no frontend
+
+Para uso educacional/testes, é possível usar as chaves diretamente no frontend (sem proxy). Basta editar `public-config.js`:
+
+```js
+window.PUBLIC_AIRTABLE = {
+  API_KEY: "pat...",
+  BASE_ID: "app...",
+  TABLE_NAME: "Clientes",
+};
+```
+
+O `app.js` detecta `PUBLIC_AIRTABLE` e chama o Airtable diretamente (GET/POST/DELETE/PATCH). Não use em produção.
+
 ## O que está incluído
 
 - `index.html`: estrutura, formulário e tabela de clientes
