@@ -4,9 +4,9 @@
 
 window.PUBLIC_AIRTABLE = {
   // Cole seu token PAT do Airtable (ex.: "pat...")
-  API_KEY: "",
+  API_KEY: "patRo239bhhjPLsBE.fa35107a69ca9b9c9fe06cad1489632a418828bafc2d05056e5345e32ceb4caa",
   // Base ID no formato appXXXXXXXXXXXXXX
-  BASE_ID: "",
+  BASE_ID: "appbFEcxsgHdCW1BU",
   // Nome exato da tabela (ex.: "Clientes")
   TABLE_NAME: "Clientes",
 };
