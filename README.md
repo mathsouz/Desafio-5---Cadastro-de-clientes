@@ -32,6 +32,24 @@ AIRTABLE_TABLE_NAME=Clientes
    ```
 3. Acesse `http://localhost:3000`.
 
+## Deploy no GitHub Pages (sem backend local)
+
+Como o GitHub Pages serve apenas arquivos estáticos, o frontend precisa chamar um proxy seguro hospedado separadamente (ex.: Cloudflare Workers, Render, Railway, Vercel Serverless) que contenha o token do Airtable. Para isso:
+
+1. Suba o `server.js` como função serverless/worker e configure as variáveis de ambiente do Airtable no provedor (não no GitHub Pages).
+2. Crie um arquivo `config.json` no repositório (já incluído) com:
+   ```json
+   { "API_BASE_URL": "https://SEU-PROXY.EXEMPLO.COM/api" }
+   ```
+3. O `app.js` lê `config.json` e direciona as chamadas para o proxy.
+
+Exemplo de opções de proxy:
+- Cloudflare Workers (KV opcional, barato e rápido)
+- Render/Railway (Node web service)
+- Vercel Functions/Netlify Functions
+
+> Importante: nunca exponha o token do Airtable no `config.json` ou no frontend. O `config.json` contém apenas a URL pública do proxy.
+
 ## O que está incluído
 
 - `index.html`: estrutura, formulário e tabela de clientes

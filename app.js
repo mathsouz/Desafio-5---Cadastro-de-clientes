@@ -28,6 +28,9 @@ const els = {
   pageInfo: document.getElementById('page-info'),
 };
 
+// Base da API (configurável via config.json para funcionar no GitHub Pages)
+let API_BASE_URL = '/api';
+
 // Controla visibilidade do estado de carregamento
 function setLoading(isLoading) {
   state.isLoading = isLoading;
@@ -136,7 +139,7 @@ async function fetchClients({ search = '', pageSize = 10, offset = null } = {}) 
     if (pageSize) params.set('pageSize', pageSize);
     if (offset) params.set('offset', offset);
 
-    const res = await fetch(`/api/clients?${params.toString()}`);
+    const res = await fetch(`${API_BASE_URL}/clients?${params.toString()}`);
     if (!res.ok) throw new Error('Erro ao carregar clientes.');
     const data = await res.json();
     state.records = data.records || [];
@@ -155,7 +158,7 @@ async function fetchClients({ search = '', pageSize = 10, offset = null } = {}) 
 async function createClient({ nome, email, telefone }) {
   els.formStatus.textContent = '';
   try {
-    const res = await fetch('/api/clients', {
+    const res = await fetch(`${API_BASE_URL}/clients`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome, email, telefone }),
@@ -178,7 +181,7 @@ async function createClient({ nome, email, telefone }) {
 async function handleDelete(id) {
   if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
   try {
-    const res = await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE_URL}/clients/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Erro ao excluir.');
     await fetchClients({ search: state.search, pageSize: state.pageSize, offset: state.prevOffsets.at(-1) || null });
   } catch (err) {
@@ -189,7 +192,7 @@ async function handleDelete(id) {
 // Atualiza um cliente (edição inline)
 async function handleUpdate(id, fields) {
   try {
-    const res = await fetch(`/api/clients/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/clients/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(fields),
@@ -249,7 +252,26 @@ els.prev.addEventListener('click', () => {
   fetchClients({ search: state.search, pageSize: state.pageSize, offset: prevPrev });
 });
 
+// Carrega configuração dinâmica (para rodar no GitHub Pages apontando para um proxy)
+async function loadConfig() {
+  try {
+    // Tenta buscar config.json na raiz do site
+    const res = await fetch('config.json', { cache: 'no-store' });
+    if (res.ok) {
+      const cfg = await res.json();
+      if (cfg && typeof cfg.API_BASE_URL === 'string' && cfg.API_BASE_URL.trim().length > 0) {
+        API_BASE_URL = cfg.API_BASE_URL.trim().replace(/\/$/, '');
+      }
+    }
+  } catch (_) {
+    // Mantém padrão '/api' (útil em desenvolvimento com o proxy local)
+  }
+}
+
 // Inicialização
-fetchClients({ pageSize: state.pageSize });
+(async function init() {
+  await loadConfig();
+  fetchClients({ pageSize: state.pageSize });
+})();
 
 
